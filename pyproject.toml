@@ -1,0 +1,19 @@
+[build-system]
+requires = [
+    "setuptools>=61",
+    "wheel>=0.29.0",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "strmbrkr"
+version = "1.3.3"
+description = "Simultaneous Task Registrar and Message Broker"
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies = [
+    "pyzmq"
+]
+
+[project.optional-dependencies]
+test = ["pytest", "coverage"]
