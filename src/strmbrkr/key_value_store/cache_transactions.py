@@ -8,24 +8,30 @@ class ValueAlreadySet(Exception):
     """Error raised by :class:`.InitCache` if cache key already has a value set."""
 
     def __init__(self, key: str, value: Any):
-        msg = f"Value already set for key '{key}': {abbreviateStr(repr(value))}"
-        super().__init__(msg)
+        self.msg = f"Value already set for key '{key}': {abbreviateStr(repr(value))}"
+
+    def __str__(self):
+        return self.msg
 
 
 class UninitializedCache(Exception):
     """Error raised by :class:`.CacheGrab` if the cache being retrieved from doesn't exist."""
 
     def __init__(self, cache_name: str):
-        msg = f"Cache '{cache_name}' has not been initialized."
-        super().__init__(msg)
+        self.msg = f"Cache '{cache_name}' has not been initialized."
+
+    def __str__(self):
+        return self.msg
 
 
 class CacheMiss(Exception):
     """Error raised by :class:`.CacheGrab` if the value being retrieved doesn't exist."""
 
     def __init__(self, cache_name: str, key: str):
-        msg = f"Cache '{cache_name}' does not have a populated value for key '{key}'"
-        super().__init__(msg)
+        self.msg = f"Cache '{cache_name}' does not have a populated value for key '{key}'"
+
+    def __str__(self):
+        return self.msg
 
 
 class InitCache(Transaction):
@@ -51,6 +57,11 @@ class InitCache(Transaction):
 
         key_value_store[self.cache_name] = dict()
 
+        self.response_payload = {
+            "cache_name": self.cache_name,
+            "clear_existing": self.clear_existing
+        }
+
 
 class CachePut(Transaction):
     """Populate a value in a specified cache."""
@@ -75,6 +86,12 @@ class CachePut(Transaction):
             return
 
         cache[self.identifier] = self.value
+
+        self.response_payload = {
+            "cache_name": self.cache_name,
+            "identifier": self.identifier,
+            "value": self.value
+        }
 
 
 class CacheGrab(Transaction):
