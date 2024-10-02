@@ -29,3 +29,11 @@ def pytest_collection_modifyitems(config, items):
 @pytest.fixture(autouse=True, scope="session")
 def ignorePipelineStatusUpdateErrors():
     KeyValueStore.setIgnoreTransactExc((InvalidStatusUpdate, ))
+
+
+@pytest.fixture(name="kvs_server_teardown")
+def teardownKVSServer():
+
+    yield
+
+    KeyValueStore.stopServerProcess()
