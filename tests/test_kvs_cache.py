@@ -14,13 +14,18 @@ from strmbrkr.key_value_store.cache_transactions import (
 )
 
 
+CACHE_NAME = "my_cache"
+KEY = "my_key"
+VALUE = "my_value"
+
+
 def test_initCache(kvs_server_teardown):
-    init_cache = InitCache("my_cache")
+    init_cache = InitCache(CACHE_NAME)
     assert KeyValueStore.submitTransaction(init_cache)
 
 
 def test_duplicateInitCache(kvs_server_teardown):
-    init_cache = InitCache("my_cache")
+    init_cache = InitCache(CACHE_NAME)
     assert KeyValueStore.submitTransaction(init_cache)
 
     with pytest.raises(ValueAlreadySet, match="Value already set for key"):
@@ -28,3 +33,37 @@ def test_duplicateInitCache(kvs_server_teardown):
 
     init_cache.clear_existing = True
     assert KeyValueStore.submitTransaction(init_cache)
+
+
+def test_cachePutGrab(kvs_server_teardown):
+    init_cache = InitCache(CACHE_NAME)
+    assert KeyValueStore.submitTransaction(init_cache)
+
+    cache_put = CachePut(CACHE_NAME, KEY, VALUE)
+    assert KeyValueStore.submitTransaction(cache_put)
+
+    cache_grab = CacheGrab(CACHE_NAME, KEY)
+    grabbed = KeyValueStore.submitTransaction(cache_grab)
+
+    assert grabbed == VALUE
+
+
+def test_noCachePut(kvs_server_teardown):
+    cache_put = CachePut(CACHE_NAME, KEY, VALUE)
+    with pytest.raises(UninitializedCache):
+        KeyValueStore.submitTransaction(cache_put)
+
+
+def test_noCacheGrab(kvs_server_teardown):
+    cache_grab = CacheGrab(CACHE_NAME, KEY)
+    with pytest.raises(UninitializedCache):
+        KeyValueStore.submitTransaction(cache_grab)
+    
+
+def test_cacheMiss(kvs_server_teardown):
+    cache_init = InitCache(CACHE_NAME)
+    KeyValueStore.submitTransaction(cache_init)
+
+    cache_grab = CacheGrab(CACHE_NAME, KEY)
+    with pytest.raises(CacheMiss):
+        KeyValueStore.submitTransaction(cache_grab)
