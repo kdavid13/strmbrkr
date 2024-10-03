@@ -1,4 +1,7 @@
 
+from copy import deepcopy
+from operator import itemgetter
+from time import time_ns
 from typing import Any
 
 from .transaction import abbreviateStr, Transaction
@@ -34,6 +37,46 @@ class CacheMiss(Exception):
         return self.msg
 
 
+class Cache:
+    """Encapsulation of cache functionality."""
+
+    def __init__(self, cache_name: str):
+        """
+        Args:
+            cache_name: Name of cache to initialize.
+        """
+        self.name = cache_name
+        self._contents = dict()
+
+    def getRecord(self, record_name: str) -> Any:
+        """Retrieve a record from this cache.
+
+        Args:
+            record_name: Unique identifier for the record being retrieved.
+
+        Returns:
+            The value of the record being retrieved.
+
+        Raises:
+            CacheMiss: If the record does not exist in this cache.
+        """
+        try:
+            record = self._contents[record_name]
+        except KeyError:
+            raise CacheMiss(self.name, record_name)
+        return record
+
+    def putRecord(self, record_name: str, record_value: Any):
+        """Store a record in this cache.
+
+        Args:
+            record_name: Unique identifier for the record being retrieved.
+            record_value: Value of record being stored.
+        """
+        self._contents[record_name] = record_value
+
+
+
 class InitCache(Transaction):
     """Transaction encapsulating the initialization of a cache."""
 
@@ -55,7 +98,7 @@ class InitCache(Transaction):
                 self.error = ValueAlreadySet(self.cache_name, value)
                 return
 
-        key_value_store[self.cache_name] = dict()
+        key_value_store[self.cache_name] = Cache(self.cache_name)
 
         self.response_payload = {
             "cache_name": self.cache_name,
@@ -64,57 +107,58 @@ class InitCache(Transaction):
 
 
 class CachePut(Transaction):
-    """Populate a value in a specified cache."""
+    """Store a record in a specified cache."""
 
-    def __init__(self, cache_name: str, identifier: str, value: Any):
+    def __init__(self, cache_name: str, record_name: str, record_value: Any):
         """
         Args:
-            cache_name: Name of cache to put specified value into.
-            identifier: Unique identifier for specified value.
-            value: Value being put into the specified cache.
+            cache_name: Name of cache to put the record into.
+            record_name: Unique identifier for specified record.
+            record_value: Value being put into the specified cache.
         """
         super().__init__(cache_name)
         self.cache_name = cache_name
-        self.identifier = identifier
-        self.value = value
+        self.record_name = record_name
+        self.record_value = record_value
 
     def transact(self, key_value_store: dict):
         try:
-            cache = key_value_store[self.cache_name]
+            cache: Cache = key_value_store[self.cache_name]
         except KeyError:
-            self.error = UninitializedCache(self.key)
+            self.error = UninitializedCache(self.cache_name)
             return
 
-        cache[self.identifier] = self.value
+        cache.putRecord(self.record_name, self.record_value)
 
         self.response_payload = {
             "cache_name": self.cache_name,
-            "identifier": self.identifier,
-            "value": self.value
+            "record_name": self.record_name,
+            "record_value": self.record_value
         }
 
 
 class CacheGrab(Transaction):
-    """Attempt to retrieve a specified value from a specified cache."""
+    """Attempt to retrieve a specified record from a specified cache."""
 
-    def __init__(self, cache_name: str, identifier: str):
+    def __init__(self, cache_name: str, record_name: str):
         """
         Args:
-            cache_name: Name of cache to grab value stored in `identifier` from.
-            identifier: Unique identifier of value stored in cache to grab.
+            cache_name: Name of cache to grab the specified record from.
+            record_name: Unique identifier of record to retrieve.
         """
         super().__init__(cache_name)
-        self.identifier = identifier
+        self.cache_name = cache_name
+        self.record_name = record_name
 
     def transact(self, key_value_store: dict):
         try:
-            cache = key_value_store[self.key]
+            cache: Cache = key_value_store[self.cache_name]
         except KeyError:
-            self.error = UninitializedCache(self.key)
+            self.error = UninitializedCache(self.cache_name)
             return
 
         try:
-            self.response_payload = cache[self.identifier]
-        except KeyError:
-            self.error = CacheMiss(self.key, self.identifier)
+            self.response_payload = cache.getRecord(self.record_name)
+        except CacheMiss as miss:
+            self.error = miss
             return
