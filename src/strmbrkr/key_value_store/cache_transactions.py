@@ -40,13 +40,17 @@ class CacheMiss(Exception):
 class Cache:
     """Encapsulation of cache functionality."""
 
-    def __init__(self, cache_name: str):
+    def __init__(self, cache_name: str, max_size: int = 128):
         """
         Args:
             cache_name: Name of cache to initialize.
+            max_size: Maximum number of values that can be stored in this cache before least
+                recently used values are purged.
         """
         self.name = cache_name
+        self.max_size = max_size
         self._contents = dict()
+        self._last_accessed = dict()
 
     def getRecord(self, record_name: str) -> Any:
         """Retrieve a record from this cache.
@@ -64,6 +68,7 @@ class Cache:
             record = self._contents[record_name]
         except KeyError:
             raise CacheMiss(self.name, record_name)
+        self._last_accessed[record_name] = time_ns()
         return record
 
     def putRecord(self, record_name: str, record_value: Any):
@@ -74,23 +79,33 @@ class Cache:
             record_value: Value of record being stored.
         """
         self._contents[record_name] = record_value
+        self._last_accessed[record_name] = time_ns()
+
+        if len(self._contents) > self.max_size:
+            lru_list = sorted(self._last_accessed.items(), key=itemgetter(1))
+            lru_key = lru_list[0][0]
+            del self._contents[lru_key]
+            del self._last_accessed[lru_key]
 
 
 
 class InitCache(Transaction):
     """Transaction encapsulating the initialization of a cache."""
 
-    def __init__(self, cache_name: str, clear_existing: bool = False):
+    def __init__(self, cache_name: str, clear_existing: bool = False, max_size: int = 128):
         """
         Args:
             cache_name: Name of cache to initialize.
             clear_existing: Flag indicating whether to clear an existing cache. Default is
                 ``False``, resulting in an error being raised if a cache already exists for
                 `cache_name`.
+            max_size: Maximum number of values that can be stored in this cache before least
+                recently used values are purged.
         """
         super().__init__(cache_name)
         self.cache_name = cache_name
         self.clear_existing = clear_existing
+        self.max_size = max_size
 
     def transact(self, key_value_store: dict):
         if (value := key_value_store.get(self.cache_name)) is not None:
@@ -98,11 +113,12 @@ class InitCache(Transaction):
                 self.error = ValueAlreadySet(self.cache_name, value)
                 return
 
-        key_value_store[self.cache_name] = Cache(self.cache_name)
+        key_value_store[self.cache_name] = Cache(self.cache_name, max_size=self.max_size)
 
         self.response_payload = {
             "cache_name": self.cache_name,
-            "clear_existing": self.clear_existing
+            "clear_existing": self.clear_existing,
+            "max_size": self.max_size
         }
 
 

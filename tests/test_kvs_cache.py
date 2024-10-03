@@ -67,3 +67,23 @@ def test_cacheMiss(kvs_server_teardown):
     cache_grab = CacheGrab(CACHE_NAME, KEY)
     with pytest.raises(CacheMiss):
         KeyValueStore.submitTransaction(cache_grab)
+
+
+def test_cacheSize(kvs_server_teardown):
+    cache_size = 16
+    cache_init = InitCache(CACHE_NAME, max_size=cache_size)
+    assert KeyValueStore.submitTransaction(cache_init)
+
+    for index in range(cache_size * 2):
+        cache_put = CachePut(CACHE_NAME, f"id_{index}", index)
+        assert KeyValueStore.submitTransaction(cache_put)
+
+    for index in range(cache_size):
+        cache_grab = CacheGrab(CACHE_NAME, f"id_{index}")
+        with pytest.raises(CacheMiss):
+            KeyValueStore.submitTransaction(cache_grab)
+
+        upper_index = cache_size + index
+        cache_grab = CacheGrab(CACHE_NAME, f"id_{upper_index}")
+        assert KeyValueStore.submitTransaction(cache_grab) == upper_index
+
