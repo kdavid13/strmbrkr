@@ -50,3 +50,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+
+
+# strmbrkr temp files
+.strmbrkr*
