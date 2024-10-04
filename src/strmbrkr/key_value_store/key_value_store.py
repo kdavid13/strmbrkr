@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from multiprocessing import Process
 from os import getpid, remove
 from threading import Lock
+from typing import Any
 from warnings import warn
 # Third Party Imports
 import zmq
@@ -12,6 +13,7 @@ from ..config import Config
 from ..logging import getLogger
 from ..endpoints import EndpointSpecification
 from .append_transaction import AppendTransaction
+from .cache_transactions import InitCache, CachePut, CacheGrab
 from .dump_transaction import DumpTransaction
 from .get_transaction import GetTransaction
 from .job_status_transaction import PipelineQueuedTransaction, PipelineDelegatedTransaction, PipelineProcessedTransaction, PipelineReturnedTransaction
@@ -326,6 +328,61 @@ class KeyValueStore:
             TypeError: Raised if there is the value currently stored at `key`, but it is not a mutable sequence.
         """
         return cls.submitTransaction(PopTransaction(key, request_payload = index))
+
+    @classmethod
+    def initCache(cls, cache_name: str, clear_existing: bool = False, max_size: int = 128) -> dict:
+        """Initialize the cache specified by the arguments.
+
+        Args:
+            cache_name: Name of the cache to be initialized.
+            clear_existing: Flag indicating whether to clear an existing cache. Default is
+                ``False``, resulting in an error being raised if a cache already exists for
+                `cache_name`.
+            max_size: Maximum number of values that can be stored in this cache before least
+                recently used values are purged.
+
+        Returns:
+            dict: Dictionary that echoes the provided arguments.
+
+        Raises:
+            ValueAlreadySet: If `clear_existing` is ``False`` and a value already exists at the key
+                specified by `cache_name`.
+        """
+        return cls.submitTransaction(InitCache(cache_name, clear_existing, max_size))
+
+    @classmethod
+    def cachePut(cls, cache_name: str, record_name: str, record_value: Any) -> dict:
+        """Store a record in the specified cache.
+
+        Args:
+            cache_name: Name of cache to put the record into.
+            record_name: Unique identifier for specified record.
+            record_value: Value being put into the specified cache.
+
+        Returns:
+            Dictionary that echoes the provided arguments.
+
+        Raises:
+            UninitializedCache: If the cache specified by `cache_name` has not been initialized.
+        """
+        return cls.submitTransaction(CachePut(cache_name, record_name, record_value))
+
+    @classmethod
+    def cacheGrab(cls, cache_name: str, record_name: str) -> Any:
+        """Attempt to retrieve a specified record from a specified cache.
+
+        Args:
+            cache_name: Name of cache to grab the specified record from.
+            record_name: Unique identifier of record to retrieve.
+
+        Returns:
+            The record value mapped to `record_name` in the cache.
+
+        Raises:
+            UninitializedCache: If the cache specified by `cache_name` has not been initialized.
+            CacheMiss: If the specified `record_name` is not mapped to a value in the cache.
+        """
+        return cls.submitTransaction(CacheGrab(cache_name, record_name))
 
     @classmethod
     def updatePipelineQueued(cls, job_id: int):

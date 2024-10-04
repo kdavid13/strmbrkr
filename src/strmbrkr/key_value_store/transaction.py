@@ -3,6 +3,35 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 
+def abbreviateStr(
+        long_str: str,
+        abbr_len: int = 32,
+        repl_str: str = " ... ",
+        tail_len: int = 2
+    ) -> str:
+    """Abbreviate a string.
+
+    Args:
+        long_str (str): Long string to be abbreviated.
+        abbr_len (int): Desired length of abbreviated string.
+        repl_str (str): String inserted into abbreviated string representing the removed contents.
+        tail_len (int): Number of characters of the original string to include at the end of the
+            abbreviated string.
+
+    Returns:
+        str: Abbreviated string.
+    """
+    abbreviated = long_str
+    if (long_str_len := len(long_str)) > abbr_len:
+        abbr_first = abbr_len - len(repl_str) - tail_len
+        abbreviated = long_str[:abbr_first]
+        abbreviated += repl_str
+        tail_index = long_str_len - tail_len
+        abbreviated += long_str[tail_index:]
+
+    return abbreviated
+
+
 class Transaction(ABC):
     """Represents a single unit of work "transaction" with the :class:`.KeyValueStore`."""
 
@@ -53,13 +82,10 @@ class Transaction(ABC):
             raise self.error
         return self.response_payload
 
-    VALUE_LIMIT =  100
-    """int: Number of characters to limit the logging of values to."""
-
     def __repr__(self):
         """Return a human readable string representation of this :class:`.Transaction`."""
         return f"{self.__class__.__name__}(" + \
             f"key={self.key}, " + \
-            f"request_payload={repr(self.request_payload)[:self.VALUE_LIMIT]}, " + \
-            f"response_payload={repr(self.response_payload)[:self.VALUE_LIMIT]}, " + \
+            f"request_payload={abbreviateStr(repr(self.request_payload))}, " + \
+            f"response_payload={abbreviateStr(repr(self.response_payload))}, " + \
             f"error={self.error})"

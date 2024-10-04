@@ -6,14 +6,6 @@ import pytest
 from strmbrkr import KeyValueStore
 
 
-@pytest.fixture(name="kvs_server_teardown")
-def teardownKVSServer():
-
-    yield
-
-    KeyValueStore.stopServerProcess()
-
-
 def test_setGetValue(kvs_server_teardown):
     assert KeyValueStore.setValue("foo", "bar") == "bar"
     assert KeyValueStore.getValue("foo") == "bar"
