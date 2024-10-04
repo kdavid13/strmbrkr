@@ -1,5 +1,4 @@
 
-from copy import deepcopy
 from operator import itemgetter
 from time import time_ns
 from typing import Any
