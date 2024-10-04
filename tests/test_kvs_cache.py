@@ -46,7 +46,19 @@ def test_noCachePut(kvs_server_teardown):
 def test_noCacheGrab(kvs_server_teardown):
     with pytest.raises(UninitializedCache):
         KeyValueStore.cacheGrab(CACHE_NAME, KEY)
-    
+
+ 
+def test_notCachePut(kvs_server_teardown):
+    KeyValueStore.setValue(CACHE_NAME, VALUE)
+    with pytest.raises(UninitializedCache):
+        KeyValueStore.cachePut(CACHE_NAME, KEY, VALUE)
+
+
+def test_notCacheGrab(kvs_server_teardown):
+    KeyValueStore.setValue(CACHE_NAME, VALUE)
+    with pytest.raises(UninitializedCache):
+        KeyValueStore.cacheGrab(CACHE_NAME, KEY)
+
 
 def test_cacheMiss(kvs_server_teardown):
     assert KeyValueStore.initCache(CACHE_NAME)

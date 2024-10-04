@@ -121,6 +121,27 @@ class InitCache(Transaction):
         }
 
 
+def getCache(key_value_store: dict, cache_name: str) -> Cache:
+    """Return the cache stored at `cache_name` in `key_value_store`, if it has been initialized.
+
+    Args:
+        key_value_store: The key value store dictionary.
+        cache_name: Name of the cache to retrieve.
+
+    Returns:
+        Cache stored at `cache_name` in `key_value_store`, if it has been initialized.
+
+    Raises:
+        UninitializedCache: If the value at `cache_name` in `key_value_store` has not been
+            initialized as a :class:`.Cache` object.
+    """
+    cache: Cache = key_value_store.get(cache_name)
+    if cache is None or not isinstance(cache, Cache):
+        raise UninitializedCache(cache_name)
+    # else:
+    return cache
+
+
 class CachePut(Transaction):
     """Store a record in a specified cache."""
 
@@ -138,18 +159,18 @@ class CachePut(Transaction):
 
     def transact(self, key_value_store: dict):
         try:
-            cache: Cache = key_value_store[self.cache_name]
-        except KeyError:
-            self.error = UninitializedCache(self.cache_name)
-            return
+            cache = getCache(key_value_store, self.cache_name)
+        except UninitializedCache as err:
+            self.error = err
 
-        cache.putRecord(self.record_name, self.record_value)
+        if self.error is None:
+            cache.putRecord(self.record_name, self.record_value)
 
-        self.response_payload = {
-            "cache_name": self.cache_name,
-            "record_name": self.record_name,
-            "record_value": self.record_value
-        }
+            self.response_payload = {
+                "cache_name": self.cache_name,
+                "record_name": self.record_name,
+                "record_value": self.record_value
+            }
 
 
 class CacheGrab(Transaction):
@@ -167,13 +188,12 @@ class CacheGrab(Transaction):
 
     def transact(self, key_value_store: dict):
         try:
-            cache: Cache = key_value_store[self.cache_name]
-        except KeyError:
-            self.error = UninitializedCache(self.cache_name)
-            return
+            cache = getCache(key_value_store, self.cache_name)
+        except UninitializedCache as err:
+            self.error = err
 
-        try:
-            self.response_payload = cache.getRecord(self.record_name)
-        except CacheMiss as miss:
-            self.error = miss
-            return
+        if self.error is None:
+            try:
+                self.response_payload = cache.getRecord(self.record_name)
+            except CacheMiss as miss:
+                self.error = miss
