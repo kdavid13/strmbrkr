@@ -217,6 +217,7 @@ class KeyValueStore:
         if _client is None:
             _client = _Client()
             cls._client_map[curr_pid] = _client
+            cls._checkServer()
         return _client
 
     @classmethod
@@ -267,7 +268,6 @@ class KeyValueStore:
         Returns:
             Any: The results of the :meth:`transaction.getResponse()` call.
         """
-        cls._checkServer()
         return cls.getClient().submitTransaction(transaction)
 
     @classmethod
